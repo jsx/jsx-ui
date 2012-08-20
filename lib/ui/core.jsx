@@ -3,7 +3,9 @@
  *
  */
 
-import "js/web.jsx";
+import "js/web.jsx" into web;
+
+import "./event.jsx";
 
 class Platform {
 	static const _width  = 320;
@@ -35,6 +37,21 @@ class Util {
 		});
 	}
 
+	static function createTextNode(s : string) : web.Node {
+		return web.dom.document.createTextNode(s);
+	}
+
+	static function createElement(name : string) : web.HTMLElement {
+		return web.dom.createElement(name);
+	}
+
+	static function createDiv() : web.HTMLDivElement {
+		return Util.createElement("div") as __noconvert__ web.HTMLDivElement;
+	}
+
+	static function createSpan() : web.HTMLSpanElement {
+		return Util.createElement("span") as __noconvert__ web.HTMLSpanElement;
+	}
 }
 
 class Point {
@@ -77,7 +94,7 @@ class Application implements Responder {
 		this._rootViewController = rootViewController;
 	}
 
-	function attach(rootElement : HTMLElement) : void {
+	function attach(rootElement : web.HTMLElement) : void {
 		var children = rootElement.childNodes;
 		for (var i = 0, l = children.length; i < l; ++i) {
 			rootElement.removeChild(children[i]);
@@ -86,15 +103,13 @@ class Application implements Responder {
 	}
 
 
-	function getElement() : HTMLElement {
-		var element = dom.createElement("div");
+	function getElement() : web.HTMLElement {
+		var element = Util.createDiv();
 		var style   = element.style;
 		style.border = "solid 1px black";
 
 		style.width   = (this._width  - 2) as string + "px";
 		style.height  = (this._height - 2) as string + "px";
-		style.margin  = "0px";
-		style.padding = "0px";
 
 		element.appendChild(this._rootViewController.getElement());
 
@@ -129,17 +144,17 @@ class Application implements Responder {
 			+ "}"
 			;
 
-		var textNode = dom.document.createTextNode(s);
-		var style = dom.createElement("style");
+		var textNode = Util.createTextNode(s);
+		var style = Util.createElement("style");
 		style.appendChild(textNode);
 
-		dom.document.head.appendChild(style);
+		web.dom.document.head.appendChild(style);
 	}
 }
 
 class ViewController implements Responder {
-	function getElement() : HTMLElement {
-		var element = dom.createElement("div");
+	function getElement() : web.HTMLElement {
+		var element = Util.createDiv();
 		// FIXME
 		return element;
 	}
@@ -165,7 +180,7 @@ class TabBarController extends ViewController {
 		return this._tabBar.getItems()[index];
 	}
 
-	override function getElement() : HTMLElement {
+	override function getElement() : web.HTMLElement {
 		var element = super.getElement();
 		element.appendChild(this._tabBar.getElement());
 		return element;
@@ -174,15 +189,15 @@ class TabBarController extends ViewController {
 
 
 mixin Appearance {
-	var _element : HTMLElement = null;
+	var _element : web.HTMLElement = null;
 
-	function _toElement() : HTMLElement {
-		var block = dom.createElement("div");
+	function _toElement() : web.HTMLElement {
+		var block = Util.createDiv();
 		// TODO: common setting
 		return block ;
 	}
 
-	function getElement() : HTMLElement {
+	function getElement() : web.HTMLElement {
 		if (! this._element) {
 			this._element = this._toElement();
 		}
@@ -200,9 +215,9 @@ class Lable implements View {
 		this._text = text;
 	}
 
-	override function _toElement() : HTMLElement {
-		var element = dom.createElement("span");
-		element.appendChild(dom.document.createTextNode(this._text));
+	override function _toElement() : web.HTMLElement {
+		var element = Util.createSpan();
+		element.appendChild(Util.createTextNode(this._text));
 		return element;
 	}
 }
@@ -223,8 +238,8 @@ class TabBar implements View {
 		return this._items;
 	}
 
-	override function _toElement() : HTMLElement {
-		var element = dom.createElement("div");
+	override function _toElement() : web.HTMLElement {
+		var element = Util.createDiv();
 		element.style.border = "solid 1px gray";
 		element.style.height = this._height as string + "px";
 
@@ -250,18 +265,18 @@ class BarItem implements Appearance {
 		this._title = title;
 	}
 
-	function onClick(cb : function () : void) : void {
-		var listener = function (e : Event) : void {
-			cb();
+	function onClick(cb : function(:MouseEvent):void) : void {
+		var listener = function (e : web.Event) : void {
+			cb(new MouseEvent(e));
 		};
 		this.getElement().addEventListener("click", listener);
 	}
 
-	override function _toElement() : HTMLElement {
-		var element = dom.createElement("span");
+	override function _toElement() : web.HTMLElement {
+		var element = Util.createSpan();
 		element.style.textAlign = "center";
 
-		var text = dom.document.createTextNode(this._title);
+		var text = Util.createTextNode(this._title);
 		element.appendChild(text);
 		return element;
 	}
@@ -293,10 +308,43 @@ class TextField implements Control {
 
 
 class Color {
+	static const BLACK      = new Color(0x00, 0x00, 0x00);
+	static const DARK_GRAY  = new Color(0x54, 0x54, 0x54);
+	static const LIGHT_GRAY = new Color(0xa8, 0xa8, 0xa8);
+	static const WHITE      = new Color(0xFF, 0xFF, 0xFF);
+	static const GRAY       = new Color(0x7f, 0x7f, 0x7f);
+	static const RED        = new Color(0xFF, 0x00, 0x00);
+	static const GREEN      = new Color(0x00, 0xFF, 0x00);
+	static const BLUE       = new Color(0x00, 0xFF, 0x00);
 
+	static const LIGHT_TEXT = new Color(0x99, 0x99, 0x99);
+	static const DARK_TEXT  = new Color(0x00, 0x00, 0x00);
+
+	var _r : int;
+	var _g : int;
+	var _b : int;
+	var _a : number;
+
+	function constructor(r : int, g : int, b : int) {
+		this(r, g, b, 1.0);
+	}
+	function constructor(r : int, g : int, b : int, a : number) {
+		this._r = r;
+		this._g = g;
+		this._b = b;
+		this._a = a;
+	}
+
+	function toStyle() : string {
+		return "rgba(" + this._r + ", " + this._g + ", " + this._b + "," + this._a + ")";
+	}
+
+	override function toString() : string {
+		return this.toStyle();
+	}
 }
 
 class Font {
-
+	// TODO
 }
 
