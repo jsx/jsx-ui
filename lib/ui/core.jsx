@@ -18,6 +18,8 @@ class Platform {
 	static function getHeight() : int {
 		return Platform._height;
 	}
+
+	static const DEBUG = true;
 }
 
 class Util {
@@ -45,16 +47,17 @@ class Util {
 		return web.dom.createElement(name);
 	}
 
-	static function createDiv() : web.HTMLDivElement {
-		return Util.createElement("div") as __noconvert__ web.HTMLDivElement;
+	static function createDiv() : web.HTMLElement {
+		return Util.createElement("div");
 	}
 
-	static function createSpan() : web.HTMLSpanElement {
-		return Util.createElement("span") as __noconvert__ web.HTMLSpanElement;
+	// XXX: Mobile Safari (iOS 5.1) has no HTMLSpanElement
+	static function createSpan() : web.HTMLElement {
+		return Util.createElement("span");
 	}
 }
 
-class Point {
+/* immutable */ class Point {
 	var x : int;
 	var y : int;
 
@@ -64,7 +67,7 @@ class Point {
 	}
 }
 
-class Rectangle {
+/* immutable */ class Size {
 	var width  : int;
 	var height : int;
 
@@ -72,9 +75,22 @@ class Rectangle {
 		this.width  = width;
 		this.height = height;
 	}
+	function clone() : Size {
+		return new Size(this.width, this.height);
+	}
 }
 
-// correspond to EventTarget
+/* immutable */ class Rectangle {
+	var origin : Point;
+	var size : Size;
+
+	function constructor(x : int, y : int, width : int, height : int) {
+		this.origin = new Point(x, y);
+		this.size   = new Size(width, height);
+	}
+
+}
+
 mixin Responder {
 
 }
@@ -83,10 +99,11 @@ class Application implements Responder {
 	var _width  = Platform.getWidth();
 	var _height = Platform.getHeight();
 
+	var _view : View;
 	var _rootViewController : ViewController = null;
 
 	function constructor() {
-		log [Platform.getWidth(), Platform.getHeight()];
+		this._view = new View();
 		Application.resetStyles();
 	}
 
@@ -102,16 +119,15 @@ class Application implements Responder {
 		rootElement.appendChild(this.getElement());
 	}
 
-
 	function getElement() : web.HTMLElement {
-		var element = Util.createDiv();
+		var element = this._view.getElement();
 		var style   = element.style;
 		style.border = "solid 1px black";
 
 		style.width   = (this._width  - 2) as string + "px";
 		style.height  = (this._height - 2) as string + "px";
 
-		element.appendChild(this._rootViewController.getElement());
+		element.appendChild(this._rootViewController.getView().getElement());
 
 		return element;
 	}
@@ -153,11 +169,29 @@ class Application implements Responder {
 }
 
 class ViewController implements Responder {
-	function getElement() : web.HTMLElement {
-		var element = Util.createDiv();
-		// FIXME
-		return element;
+	var _view : View;
+
+	var _tabBarItem : TabBarItem = null;
+
+	function constructor() {
+		this._view = new View();
 	}
+
+	function getView() : View {
+		return this._view;
+	}
+	function setView(view : View) : void {
+		this._view = view;
+	}
+
+	function getTabBarItem() : TabBarItem {
+		return this._tabBarItem;
+	}
+
+	function setTabBarItem(item : TabBarItem) : void {
+		this._tabBarItem = item;
+	}
+
 }
 
 class TabBarController extends ViewController {
@@ -169,21 +203,20 @@ class TabBarController extends ViewController {
 
 	function setViewControllers(viewControllers : Array.<ViewController>) : void {
 		this._viewControllers = viewControllers.concat(); // clone
-		this._tabBar = new TabBar(viewControllers.length);
+		this._tabBar = new TabBar(viewControllers);
+
+		this.getView().addSubview(this._tabBar);
+		/*
+		this._tabBar.forEachItem((item) -> {
+			item.onClick((event) -> {
+				item.getController().toBack();
+			});
+		});
+		*/
 	}
 
 	function getTabBar() : TabBar {
 		return this._tabBar;
-	}
-
-	function getTabBarItemAt(index : int) : TabBarItem {
-		return this._tabBar.getItems()[index];
-	}
-
-	override function getElement() : web.HTMLElement {
-		var element = super.getElement();
-		element.appendChild(this._tabBar.getElement());
-		return element;
 	}
 }
 
@@ -203,12 +236,59 @@ mixin Appearance {
 		}
 		return this._element;
 	}
+
 }
 
-mixin View implements Responder, Appearance {
+class View implements Responder, Appearance {
+	var _frame : Rectangle;
+	var _backgroundColor : Color = Color.WHITE;
+
+	var _subviews = new Array.<View>();
+
+	function getFrame() : Rectangle {
+		return this._frame;
+	}
+	function setFrame(rect : Rectangle) : void {
+		this._frame = rect;
+	}
+
+	function getBackgroundColor() : Color {
+		return this._backgroundColor;
+	}
+	function setBackgroundColor(color : Color) : void {
+		this._backgroundColor = color;
+	}
+
+	function addSubview(view : View) : void {
+		this._subviews.push(view);
+	}
+
+	function onClick(cb : function(:MouseEvent):void) : void {
+		var listener = function (e : web.Event) : void {
+			cb(new MouseEvent(e));
+		};
+		this.getElement().addEventListener("click", listener);
+	}
+
+	function show() : void {
+		this.getElement().style.display = "none";
+	}
+	function hide() : void {
+		this.getElement().style.display = "default";
+	}
+
+	override function _toElement() : web.HTMLElement {
+		var block = Util.createDiv();
+		block.style.backgroundColor = this._backgroundColor.toStyle();
+
+		this._subviews.forEach( (view) -> {
+			block.appendChild(view.getElement());
+		});
+		return block ;
+	}
 }
 
-class Lable implements View {
+class Lable extends View {
 	var _text : string;
 
 	function constructor(text : string) {
@@ -222,36 +302,39 @@ class Lable implements View {
 	}
 }
 
-class TabBar implements View {
-	var _items : Array.<TabBarItem>;
+class TabBar extends View {
+	var _controllers : Array.<ViewController>;
 
-	var _height = 40;
+	var _height : int = 40;
 
-	function constructor(length : int) {
-		this._items = new Array.<TabBarItem>(length);
-		for (var i = 0; i < length; ++i) {
-			this._items[i] = new TabBarItem();
-		}
-	}
-
-	function getItems() : Array.<TabBarItem> {
-		return this._items;
+	function constructor(controllers : Array.<ViewController>) {
+		this._controllers = controllers;
 	}
 
 	override function _toElement() : web.HTMLElement {
-		var element = Util.createDiv();
-		element.style.border = "solid 1px gray";
-		element.style.height = this._height as string + "px";
+		var element = super._toElement();
+		var style   = element.style;
+		style.height   = this._height as string + "px";
+		style.position = "fixed";
+		style.bottom   = "0px";
+		style.width    = "100%";
 
-		var itemWidth = (Platform.getWidth() / this._items.length) as int;
-		this._items.forEach( (item, i) -> {
+		var itemWidth = (Platform.getWidth() / this._controllers.length) as int;
+		this._controllers.forEach( (controller, i) -> {
+			var item        = controller.getTabBarItem();
 			var itemElement = item.getElement();
 			var style       = itemElement.style;
+
 			style.position = "fixed";
 			style.bottom   = "0px";
 			style.left  = (i * itemWidth) as string + "px";
 			style.width = itemWidth as string + "px";
-			style.border = "solid 1px red"; // FIXME
+			style.height = this._height as string + "px";
+
+			if (Platform.DEBUG) {
+				style.border = "solid 1px red";
+			}
+
 			element.appendChild(itemElement);
 		});
 		return element;
@@ -260,21 +343,28 @@ class TabBar implements View {
 
 class BarItem implements Appearance {
 	var _title = "";
+	var _controller : ViewController = null;
+
+	function constructor(title : string) {
+		this._title = title;
+	}
 
 	function setTitle(title : string) : void {
 		this._title = title;
 	}
 
-	function onClick(cb : function(:MouseEvent):void) : void {
-		var listener = function (e : web.Event) : void {
-			cb(new MouseEvent(e));
-		};
-		this.getElement().addEventListener("click", listener);
+	function setController(controller : ViewController) : void {
+		this._controller = controller;
+	}
+
+	function getController(controller : ViewController) : ViewController {
+		return this._controller;
 	}
 
 	override function _toElement() : web.HTMLElement {
 		var element = Util.createSpan();
 		element.style.textAlign = "center";
+		element.style.fontSize  = "2em";
 
 		var text = Util.createTextNode(this._title);
 		element.appendChild(text);
@@ -284,30 +374,36 @@ class BarItem implements Appearance {
 
 class TabBarItem extends BarItem {
 
+	function constructor(title : string) {
+		super(title);
+	}
 }
 
-class NavigationBar implements View {
-
-}
-
-class ScrollVIew implements View {
-
-}
-
-mixin Control implements View {
+class NavigationBar extends View {
 
 }
 
-class Button implements Control {
+class ScrollVIew extends View {
 
 }
 
-class TextField implements Control {
+class Control extends View {
+
+}
+
+class Label extends View {
+}
+
+class Button extends Control {
+
+}
+
+class TextField extends Control {
 
 }
 
 
-class Color {
+/* immutable */ class Color {
 	static const BLACK      = new Color(0x00, 0x00, 0x00);
 	static const DARK_GRAY  = new Color(0x54, 0x54, 0x54);
 	static const LIGHT_GRAY = new Color(0xa8, 0xa8, 0xa8);
@@ -336,7 +432,11 @@ class Color {
 	}
 
 	function toStyle() : string {
-		return "rgba(" + this._r + ", " + this._g + ", " + this._b + "," + this._a + ")";
+		return "rgba("
+			+ this._r as string + ", "
+			+ this._g as string + ", "
+			+ this._b as string + ", "
+			+ this._a as string + ")";
 	}
 
 	override function toString() : string {

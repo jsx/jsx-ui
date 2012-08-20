@@ -1,4 +1,4 @@
-import "ui/*.jsx" into ui;
+import "../lib/ui/*.jsx" into ui;
 import "js/web.jsx";
 
 class _Main {
@@ -15,21 +15,21 @@ class MyApp extends ui.Application {
 		var firstTab  = new FirstViewController();
 		var secondTab = new SecondViewController();
 
-		var tabs = new ui.TabBarController();
-		tabs.setViewControllers([firstTab, secondTab] : ui.ViewController[]);
+		var top = new ui.TabBarController();
+		top.setViewControllers([firstTab, secondTab] : ui.ViewController[]);
 
-		tabs.getTabBarItemAt(0).setTitle("first");
-		tabs.getTabBarItemAt(1).setTitle("second");
-
-		this.setRootViewController(tabs);
+		this.setRootViewController(top);
 	}
 }
 
 class FirstViewController extends ui.ViewController {
-
+	function constructor() {
+		this.setTabBarItem(new ui.TabBarItem("first"));
+	}
 }
 
 class SecondViewController extends ui.ViewController {
-
-
+	function constructor() {
+		this.setTabBarItem(new ui.TabBarItem("second"));
+	}
 }
