@@ -88,7 +88,6 @@ class Util {
 		this.origin = new Point(x, y);
 		this.size   = new Size(width, height);
 	}
-
 }
 
 mixin Responder {
@@ -96,14 +95,12 @@ mixin Responder {
 }
 
 class Application implements Responder {
-	var _width  = Platform.getWidth();
-	var _height = Platform.getHeight();
-
 	var _view : View;
 	var _rootViewController : ViewController = null;
 
 	function constructor() {
 		this._view = new View();
+		this._view.setFrame(new Rectangle(0, 0, Platform.getWidth(), Platform.getHeight()));
 		Application.resetStyles();
 	}
 
@@ -123,9 +120,6 @@ class Application implements Responder {
 		var element = this._view.getElement();
 		var style   = element.style;
 		style.border = "solid 1px black";
-
-		style.width   = (this._width  - 2) as string + "px";
-		style.height  = (this._height - 2) as string + "px";
 
 		element.appendChild(this._rootViewController.getView().getElement());
 
@@ -240,9 +234,12 @@ mixin Appearance {
 }
 
 class View implements Responder, Appearance {
-	var _frame : Rectangle;
+	var _frame : Rectangle = new Rectangle(0, 0, 0, 0);
+	var _autoSized : boolean = true;
+
 	var _backgroundColor : Color = Color.WHITE;
 
+	var _parent : View = null;
 	var _subviews = new Array.<View>();
 
 	function getFrame() : Rectangle {
@@ -259,8 +256,28 @@ class View implements Responder, Appearance {
 		this._backgroundColor = color;
 	}
 
+	function getParent() : View {
+		return this._parent;
+	}
+
 	function addSubview(view : View) : void {
+		assert this != view;
+
 		this._subviews.push(view);
+		view._parent = this;
+	}
+
+	function calculateFrame() : Rectangle {
+		var frame = new Rectangle(0, 0, this._frame.size.width, this._frame.size.height);
+		/*
+		for (var v = this; v != null; v = this.getParent()) {
+			log v;
+			var origin = v.getFrame().origin;
+			frame.origin.x += origin.x;
+			frame.origin.y += origin.y;
+		}
+		*/
+		return frame;
 	}
 
 	function onClick(cb : function(:MouseEvent):void) : void {
@@ -279,12 +296,31 @@ class View implements Responder, Appearance {
 
 	override function _toElement() : web.HTMLElement {
 		var block = Util.createDiv();
-		block.style.backgroundColor = this._backgroundColor.toStyle();
+		var style = block.style;
+
+		style.backgroundColor = this._backgroundColor.toStyle();
+		style.position        = "absolute";
+
+		var frame = this.calculateFrame();
+
+		if (Platform.DEBUG) {
+			style.border = "solid 1px blue";
+			frame.size.width  -= 2;
+			frame.size.height -= 2;
+		}
+
+		style.left = frame.origin.x as string + "px";
+		style.top  = frame.origin.y as string + "px";
+
+		if (! this._autoSized) {
+			style.width  = frame.size.width as string + "px";
+			style.height = frame.size.height as string + "px";
+		}
 
 		this._subviews.forEach( (view) -> {
 			block.appendChild(view.getElement());
 		});
-		return block ;
+		return block;
 	}
 }
 
