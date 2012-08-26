@@ -11,15 +11,12 @@ import "js/web.jsx" into web;
 import "./event.jsx";
 
 class Platform {
-  static const _width  = 320;
-  static const _height = 480;
-
   static function getWidth() : int {
-    return Platform._width;
+    return web.dom.window.innerWidth;
   }
 
   static function getHeight() : int {
-    return Platform._height;
+    return web.dom.window.innerHeight;
   }
 
   static const DEBUG = true;
@@ -57,6 +54,11 @@ class Util {
   // XXX: Mobile Safari (iOS 5.1) has no HTMLSpanElement
   static function createSpan() : web.HTMLElement {
     return Util.createElement("span");
+  }
+
+
+  static function borderWithColor(color : Color) : string {
+    return "solid 1px " + color.toStyle();
   }
 }
 
@@ -122,7 +124,6 @@ class Application implements Responder {
   function getElement() : web.HTMLElement {
     var element = this._view.getElement();
     var style   = element.style;
-    style.border = "solid 1px black";
 
     element.appendChild(this._rootViewController.getView().getElement());
 
@@ -272,14 +273,11 @@ class View implements Responder, Appearance {
 
   function calculateFrame() : Rectangle {
     var frame = new Rectangle(0, 0, this._frame.size.width, this._frame.size.height);
-    /*
-    for (var v = this; v != null; v = this.getParent()) {
-      log v;
+    for (var v = this; v != null; v = v.getParent()) {
       var origin = v.getFrame().origin;
       frame.origin.x += origin.x;
       frame.origin.y += origin.y;
     }
-    */
     return frame;
   }
 
@@ -307,9 +305,7 @@ class View implements Responder, Appearance {
     var frame = this.calculateFrame();
 
     if (Platform.DEBUG) {
-      style.border = "solid 1px blue";
-      frame.size.width  -= 2;
-      frame.size.height -= 2;
+      style.border = Util.borderWithColor(Color.BLUE);
     }
 
     style.left = frame.origin.x as string + "px";
@@ -371,7 +367,7 @@ class TabBar extends View {
       style.height = this._height as string + "px";
 
       if (Platform.DEBUG) {
-        style.border = "solid 1px red";
+        style.border = Util.borderWithColor(Color.RED);
       }
 
       element.appendChild(itemElement);
@@ -403,7 +399,6 @@ class BarItem implements Appearance {
   override function _toElement() : web.HTMLElement {
     var element = Util.createSpan();
     element.style.textAlign = "center";
-    element.style.fontSize  = "2em";
 
     var text = Util.createTextNode(this._title);
     element.appendChild(text);
@@ -415,6 +410,14 @@ class TabBarItem extends BarItem {
 
   function constructor(title : string) {
     super(title);
+  }
+
+  override function _toElement() : web.HTMLElement {
+    var element = super._toElement();
+
+    element.style.backgroundColor = "#eeeeee";
+
+    return element;
   }
 }
 
@@ -450,7 +453,7 @@ class TextField extends Control {
   static const GRAY       = new Color(0x7f, 0x7f, 0x7f);
   static const RED        = new Color(0xFF, 0x00, 0x00);
   static const GREEN      = new Color(0x00, 0xFF, 0x00);
-  static const BLUE       = new Color(0x00, 0xFF, 0x00);
+  static const BLUE       = new Color(0x00, 0x00, 0xFF);
 
   static const LIGHT_TEXT = new Color(0x99, 0x99, 0x99);
   static const DARK_TEXT  = new Color(0x00, 0x00, 0x00);
