@@ -7,13 +7,30 @@
         display: block;
         margin-left: auto;
         margin-right: auto;
-        border: none;
+        border: solid 1px black;
+
+        width:  320px;
+        height: 480px;
+      }
+      #main-form {
+        width: 320px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      #address-bar {
+        width: 320px;
       }
     </style>
+    <script src="simulator.jsx.js"></script>
   </head>
   <body>
-    <iframe id="screen" src="hello.html" width="320" height="480" scrolling="no"/>
-      <a href="hello.html">iframe</a>
-    </iframe>
+    <div>
+      <form id="main-form">
+        <input type="text" id="address-bar" value="hello.html" />
+      </form>
+      <iframe id="screen" src="hello.html" scrolling="no"/>
+        <a href="hello.html">iframe</a>
+      </iframe>
+    </div>
   </body>
 </html>
