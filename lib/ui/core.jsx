@@ -24,17 +24,17 @@ class Platform {
 
 class Util {
   static function format(fmt : string, list : int[]) : string {
-    return fmt.replace(/%/g, function (s) {
+    return fmt.replace(/%/g, (s) -> {
       return list[s as int] as string;
     });
   }
   static function format(fmt : string, list : number[]) : string {
-    return fmt.replace(/%/g, function (s) {
+    return fmt.replace(/%/g, (s) -> {
       return list[s as int] as string;
     });
   }
   static function format(fmt : string, list : string[]) : string {
-    return fmt.replace(/%/g, function (s) {
+    return fmt.replace(/%/g, (s) -> {
       return list[s as int] as string;
     });
   }
@@ -56,6 +56,13 @@ class Util {
     return Util.createElement("span");
   }
 
+  static function replaceChildElements(element : web.HTMLElement, content: web.HTMLElement) : void {
+    var children = element.childNodes;
+    for (var i = 0, l = children.length; i < l; ++i) {
+      element.removeChild(children[i]);
+    }
+    element.appendChild(content);
+  }
 
   static function borderWithColor(color : Color) : string {
     return "solid 1px " + color.toStyle();
@@ -114,11 +121,7 @@ class Application implements Responder {
   }
 
   function attach(rootElement : web.HTMLElement) : void {
-    var children = rootElement.childNodes;
-    for (var i = 0, l = children.length; i < l; ++i) {
-      rootElement.removeChild(children[i]);
-    }
-    rootElement.appendChild(this.getElement());
+    Util.replaceChildElements(rootElement, this.getElement());
   }
 
   function getElement() : web.HTMLElement {
@@ -167,12 +170,12 @@ class Application implements Responder {
 }
 
 class ViewController implements Responder {
-  var _view : View;
+  var _view : View = null;
+  var _parentViewController : ViewController = null;
 
   var _tabBarItem : TabBarItem = null;
 
   function constructor() {
-    this._view = new View();
   }
 
   function getView() : View {
@@ -190,31 +193,64 @@ class ViewController implements Responder {
     this._tabBarItem = item;
   }
 
+  function getParentViewController() : ViewController {
+    return this._parentViewController;
+  }
+
+  function setParentViewController(viewController : ViewController) : void {
+    this._parentViewController = viewController;
+  }
+
+  function getTabBarController() : TabBarController {
+    return this._parentViewController as TabBarController;
+  }
+
 }
 
 class TabBarController extends ViewController {
   var _viewControllers : Array.<ViewController>;
-  var _tabBar : TabBar = null;
+  var _selectedIndex : int = 0;
+  var _tabBar : TabBar;
 
   function constructor() {
+    this._view = new View();
   }
 
   function setViewControllers(viewControllers : Array.<ViewController>) : void {
     this._viewControllers = viewControllers.concat(); // clone
-    this._tabBar = new TabBar(viewControllers);
 
-    this.getView().addSubview(this._tabBar);
-    /*
-    this._tabBar.forEachItem((item) -> {
-      item.onClick((event) -> {
-        item.getController().toBack();
-      });
+    this._viewControllers.forEach((controller) -> {
+      controller.setParentViewController(this);
     });
-    */
+
+    this._tabBar = new TabBar(this._viewControllers);
+
+    this._view.addSubview(this._tabBar);
+
+    this.setSelectedIndex(this._selectedIndex);
   }
 
   function getTabBar() : TabBar {
     return this._tabBar;
+  }
+
+  function getSelectedIndex() : int {
+    return this._selectedIndex;
+  }
+
+  function getSelectedViewController() : ViewController {
+    return this._viewControllers[this._selectedIndex];
+  }
+
+  function setSelectedIndex(index : int) : void {
+    assert index >= 0;
+    assert index < this._viewControllers.length;
+
+    this._selectedIndex = index;
+
+    // XXX: to sync DOM and View structure?
+    //this.getView()._popSubview();
+    //this.getView().addSubview(this._viewControllers[index].getElement());
   }
 }
 
@@ -264,6 +300,10 @@ class View implements Responder, Appearance {
     return this._parent;
   }
 
+  function _popSubview(index : int) : void {
+    this._subviews.pop()._parent = null;
+  }
+
   function addSubview(view : View) : void {
     assert this != view;
 
@@ -286,13 +326,6 @@ class View implements Responder, Appearance {
       cb(new MouseEvent(e));
     };
     this.getElement().addEventListener("click", listener);
-  }
-
-  function show() : void {
-    this.getElement().style.display = "none";
-  }
-  function hide() : void {
-    this.getElement().style.display = "default";
   }
 
   override function _toElement() : web.HTMLElement {
@@ -321,6 +354,25 @@ class View implements Responder, Appearance {
     });
     return block;
   }
+
+
+  // Controlls the viwwa and subviews
+
+  function show() : void {
+    this.getElement().style.display = "none";
+  }
+  function hide() : void {
+    this.getElement().style.display = "default";
+  }
+
+  function bringSubviewToFront(subview : View) : void {
+    var style = subview.getElement().style;
+    style.zIndex = ((style.zIndex as int) + 1) as string;
+  }
+  function sendSubviewToBack(subview : View) : void {
+    var style = subview.getElement().style;
+    style.zIndex = ((style.zIndex as int) - 1) as string;
+  }
 }
 
 class Lable extends View {
@@ -331,12 +383,15 @@ class Lable extends View {
   }
 
   override function _toElement() : web.HTMLElement {
-    var element = Util.createSpan();
+    var element = Util.createSpan(); // FIXME: super._toElement()?
     element.appendChild(Util.createTextNode(this._text));
     return element;
   }
 }
 
+/*
+ * @see TabBarItem
+ */
 class TabBar extends View {
   var _controllers : Array.<ViewController>;
 
@@ -355,6 +410,7 @@ class TabBar extends View {
     style.width    = "100%";
 
     var itemWidth = (Platform.getWidth() / this._controllers.length) as int;
+
     this._controllers.forEach( (controller, i) -> {
       var item        = controller.getTabBarItem();
       var itemElement = item.getElement();
@@ -365,10 +421,15 @@ class TabBar extends View {
       style.left  = (i * itemWidth) as string + "px";
       style.width = itemWidth as string + "px";
       style.height = this._height as string + "px";
+      style.cursor = "pointer";
 
       if (Platform.DEBUG) {
         style.border = Util.borderWithColor(Color.RED);
       }
+
+      itemElement.addEventListener("click", (e) -> {
+
+      });
 
       element.appendChild(itemElement);
     });
