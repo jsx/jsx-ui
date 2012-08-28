@@ -495,6 +495,35 @@ class Control extends View {
 }
 
 class Label extends View {
+  var _content : web.Node = null;
+  var _color : Color = Color.DARK_TEXT;
+
+  function constructor() {
+  }
+
+  function constructor(text : string) {
+    this.setText(text);
+  }
+
+  function setText(content : string) : void {
+    this._content = Util.createTextNode(content);
+  }
+
+  function setText(content : web.Node) : void {
+    this._content = content;
+  }
+
+  override function _toElement() : web.HTMLElement {
+    assert this._content != null;
+
+    var element = super._toElement(); // <div>
+    element.appendChild(this._content);
+
+    var style = element.style;
+    style.color = this._color.toStyle();
+
+    return element;
+  }
 }
 
 class Button extends Control {
