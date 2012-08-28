@@ -15,33 +15,15 @@ class _Main {
 
 class MyApp extends ui.Application {
 	function constructor() {
-		var top = new ui.TabBarController();
-
-		var firstTab  = new FirstViewController();
-		var secondTab = new SecondViewController();
-
-		top.setViewControllers([firstTab, secondTab] : ui.ViewController[]);
-
+		var top = new ui.ViewController();
 		this.setRootViewController(top);
-	}
-}
-
-class FirstViewController extends ui.ViewController {
-	function constructor() {
-		this.setTabBarItem(new ui.TabBarItem("first"));
 
 		var view = new ui.View();
-		view.setBackgroundColor(ui.Color.GREEN);
-		this.setView(view);
+		top.setView(view);
+
+		view.addSubview(new ui.Label("first"));
+		view.addSubview(new ui.Label("second"));
+		view.addSubview(new ui.Label("third"));
 	}
 }
 
-class SecondViewController extends ui.ViewController {
-	function constructor() {
-		this.setTabBarItem(new ui.TabBarItem("second"));
-
-		var view = new ui.View();
-		view.setBackgroundColor(ui.Color.BLUE);
-		this.setView(view);
-	}
-}
