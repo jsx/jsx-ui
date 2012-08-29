@@ -71,6 +71,7 @@ class Util {
 
 
   static function applyGradient(style : web.CSSStyleDeclaration, type : string, begin : string, end : string, fromColor : Color, toColor : Color) : void {
+    // TODO: portability?
     var s = Util.format("-webkit-gradient(%1, %2, %3, from(%4), to(%5))",
         [type, begin, end, fromColor.toString(), toColor.toString()]);
     style.background = s;
@@ -320,7 +321,7 @@ class View implements Responder, Appearance {
     var style = block.style;
 
     style.backgroundColor = this._backgroundColor.toString();
-    style.width = "100%";
+    style.width = "auto";
 
     if (Platform.DEBUG) {
       //style.border = Util.borderWithColor(Color.BLUE);
@@ -517,9 +518,8 @@ class Label extends View {
     var style = element.style;
     style.color     = this._color.toString();
     style.textAlign = this._align;
-    style.paddingTop    = "5px";
-    style.paddingBottom = "5px";
-    style.margin        = "2px";
+    style.padding = "5px";
+    style.margin  = "2px";
 
     style.borderRadius = "8px";
     Util.applyGradient(style, "linear", "left top", "left bottom", Color.WHITE, Color.LIGHT_GRAY);
