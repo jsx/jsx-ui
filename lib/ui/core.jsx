@@ -23,20 +23,21 @@ class Platform {
 }
 
 class Util {
-  static function format(fmt : string, list : int[]) : string {
-    return fmt.replace(/%/g, (s) -> {
-      return list[s as int] as string;
+  static function format(fmt : string, list : variant[]) : string {
+    return fmt.replace(/%\d+/g, (s) -> {
+      var index = s.slice(1) as int - 1;
+      return list[index] as string;
     });
+  }
+
+  static function format(fmt : string, list : int[]) : string {
+    return Util.format(fmt, list as __noconvert__ variant[]);
   }
   static function format(fmt : string, list : number[]) : string {
-    return fmt.replace(/%/g, (s) -> {
-      return list[s as int] as string;
-    });
+    return Util.format(fmt, list as __noconvert__ variant[]);
   }
   static function format(fmt : string, list : string[]) : string {
-    return fmt.replace(/%/g, (s) -> {
-      return list[s as int] as string;
-    });
+    return Util.format(fmt, list as __noconvert__ variant[]);
   }
 
   static function createTextNode(s : string) : web.Node {
@@ -65,7 +66,14 @@ class Util {
   }
 
   static function borderWithColor(color : Color) : string {
-    return "solid 1px " + color.toStyle();
+    return "solid 1px " + color.toString();
+  }
+
+
+  static function applyGradient(style : web.CSSStyleDeclaration, type : string, begin : string, end : string, fromColor : Color, toColor : Color) : void {
+    var s = Util.format("-webkit-gradient(%1, %2, %3, from(%4), to(%5))",
+        [type, begin, end, fromColor.toString(), toColor.toString()]);
+    style.background = s;
   }
 }
 
@@ -103,7 +111,7 @@ class Util {
 }
 
 mixin Responder {
-
+  // TODO
 }
 
 class Application implements Responder {
@@ -112,7 +120,6 @@ class Application implements Responder {
 
   function constructor() {
     this._view = new View();
-    this._view.setFrame(new Rectangle(0, 0, Platform.getWidth(), Platform.getHeight()));
     Application.resetStyles();
   }
 
@@ -274,20 +281,10 @@ mixin Appearance {
 }
 
 class View implements Responder, Appearance {
-  var _frame : Rectangle = new Rectangle(0, 0, 0, 0);
-  var _autoSized : boolean = true;
-
   var _backgroundColor : Color = Color.WHITE;
 
   var _parent : View = null;
   var _subviews = new Array.<View>();
-
-  function getFrame() : Rectangle {
-    return this._frame;
-  }
-  function setFrame(rect : Rectangle) : void {
-    this._frame = rect;
-  }
 
   function getBackgroundColor() : Color {
     return this._backgroundColor;
@@ -311,16 +308,6 @@ class View implements Responder, Appearance {
     view._parent = this;
   }
 
-  function calculateFrame() : Rectangle {
-    var frame = new Rectangle(0, 0, this._frame.size.width, this._frame.size.height);
-    for (var v = this; v != null; v = v.getParent()) {
-      var origin = v.getFrame().origin;
-      frame.origin.x += origin.x;
-      frame.origin.y += origin.y;
-    }
-    return frame;
-  }
-
   function onClick(cb : function(:MouseEvent):void) : void {
     var listener = function (e : web.Event) : void {
       cb(new MouseEvent(e));
@@ -332,21 +319,11 @@ class View implements Responder, Appearance {
     var block = Util.createDiv();
     var style = block.style;
 
-    style.backgroundColor = this._backgroundColor.toStyle();
-    style.position        = "absolute";
-
-    var frame = this.calculateFrame();
+    style.backgroundColor = this._backgroundColor.toString();
+    style.width = "100%";
 
     if (Platform.DEBUG) {
-      style.border = Util.borderWithColor(Color.BLUE);
-    }
-
-    style.left = frame.origin.x as string + "px";
-    style.top  = frame.origin.y as string + "px";
-
-    if (! this._autoSized) {
-      style.width  = frame.size.width as string + "px";
-      style.height = frame.size.height as string + "px";
+      //style.border = Util.borderWithColor(Color.BLUE);
     }
 
     this._subviews.forEach( (view) -> {
@@ -497,6 +474,7 @@ class Control extends View {
 class Label extends View {
   var _content : web.Node = null;
   var _color : Color = Color.DARK_TEXT;
+  var _align : string;
 
   function constructor() {
   }
@@ -513,6 +491,23 @@ class Label extends View {
     this._content = content;
   }
 
+  function setAlign(align : string) : void {
+    this._align = align;
+  }
+
+  function toCenter() : Label {
+    this.setAlign("center");
+    return this;
+  }
+  function toLeft() : Label {
+    this.setAlign("left");
+    return this;
+  }
+  function toRight() : Label {
+    this.setAlign("right");
+    return this;
+  }
+
   override function _toElement() : web.HTMLElement {
     assert this._content != null;
 
@@ -520,7 +515,15 @@ class Label extends View {
     element.appendChild(this._content);
 
     var style = element.style;
-    style.color = this._color.toStyle();
+    style.color     = this._color.toString();
+    style.textAlign = this._align;
+    style.paddingTop    = "5px";
+    style.paddingBottom = "5px";
+    style.margin        = "2px";
+
+    style.borderRadius = "8px";
+    Util.applyGradient(style, "linear", "left top", "left bottom", Color.WHITE, Color.LIGHT_GRAY);
+
 
     return element;
   }
@@ -563,7 +566,7 @@ class TextField extends Control {
     this._a = a;
   }
 
-  function toStyle() : string {
+  function toRGBAStyle() : string {
     return "rgba("
       + this._r as string + ", "
       + this._g as string + ", "
@@ -571,8 +574,21 @@ class TextField extends Control {
       + this._a as string + ")";
   }
 
+
+  function _hex02(c : int) : string {
+    var s = c.toString(16);
+    return s.length > 1 ? s : "0" + s;
+  }
+
+  function toHexStyle() : string {
+    return "#"
+      + this._hex02(this._r)
+      + this._hex02(this._g)
+      + this._hex02(this._b);
+  }
+
   override function toString() : string {
-    return this.toStyle();
+    return this.toRGBAStyle();
   }
 }
 
