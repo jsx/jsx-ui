@@ -21,9 +21,9 @@ class MyApp extends ui.Application {
 		var view = new ui.View();
 		top.setView(view);
 
-		view.addSubview(new ui.Label("first"));
-		view.addSubview(new ui.Label("second"));
-		view.addSubview(new ui.Label("third"));
+		view.addSubview(new ui.Label("first").toCenter());
+		view.addSubview(new ui.Label("second").toCenter());
+		view.addSubview(new ui.Label("third").toCenter());
 	}
 }
 
