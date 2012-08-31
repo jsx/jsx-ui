@@ -535,6 +535,35 @@ class Button extends Control {
 
 class TextField extends Control {
 
+  // FIXME KAZUHO circular reference
+  var _node = web.dom.document.createElement("INPUT") as web.HTMLInputElement;
+
+  function constructor() {
+  }
+
+  function constructor(text : string) {
+    this._node.value = text;
+  }
+
+  function getValue() : string {
+    return this._node.value;
+  }
+
+  function setValue(text : string) : void {
+    this._node.value = text;
+  }
+
+  override function _toElement() : web.HTMLElement {
+    var element = super._toElement(); // <div>
+
+    element.appendChild(this._node);
+
+    var style = this._node.style;
+    style.width = "100%";
+
+    return element;
+  }
+
 }
 
 
