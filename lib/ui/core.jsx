@@ -531,6 +531,48 @@ class Label extends View {
 
 class Button extends Control {
 
+  // FIXME KAZUHO circular reference
+  var _node = web.dom.document.createElement("INPUT") as web.HTMLInputElement;
+
+  function constructor() {
+    this._node.type = "button";
+  }
+
+  function constructor(label : string, handler : function(: web.Event) : void) {
+    this();
+    this.setLabel(label);
+    this.setHandler(handler);
+  }
+
+  function setLabel(label : string) : Button {
+    this._node.value = label;
+    return this;
+  }
+
+  function getLabel() : string {
+    return this._node.value;
+  }
+
+  function setHandler(handler : function (: web.Event) : void) : Button {
+    this._node.onclick = handler;
+    return this;
+  }
+
+  function getHandler() : function (: web.Event) : void {
+    return this._node.onclick;
+  }
+
+  override function _toElement() : web.HTMLElement {
+    var element = super._toElement(); // <div>
+
+    element.appendChild(this._node);
+
+    var style = this._node.style;
+    style.width = "100%";
+
+    return element;
+  }
+
 }
 
 class TextField extends Control {
