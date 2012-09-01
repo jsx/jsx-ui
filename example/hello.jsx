@@ -24,6 +24,14 @@ class MyApp extends ui.Application {
 		view.addSubview(new ui.Label("first").toCenter());
 		view.addSubview(new ui.Label("second").toCenter());
 		view.addSubview(new ui.Label("third").toCenter());
+
+		var t = new ui.TextField("John");
+		view.addSubview(t);
+
+		var b = new ui.Button("click me!", function (e) {
+			dom.window.alert("my name is " + t.getValue());
+		});
+		view.addSubview(b);
 	}
 }
 
