@@ -18,3 +18,23 @@ Notes
  * [FastClick](http://jsdo.it/kyo_ago/fastClick)
 * [コールバック関数の実行回数を間引く](http://level0.kayac.com/#!2012/07/post_115.php) (JSX ver. http://jsdo.it/__gfx__/throttle)
 
+How to develop
+=====================================================================
+
+JSX repoの web/example/ にこのリポジトリを clone する。
+(またはjsx-uiをmvする)
+
+	cd $JSX/web/example
+	git clone git@github.com:jsx/jsx-ui.git
+
+JSX repoのrootディレクトリで make web && make server。
+
+	make web
+	make server
+
+以下のURLにアクセスする。
+
+	open http://localhost:5000/try/example/jsx-ui/example/simulator.html
+
+これで編集 & リロードで開発できる。
+
