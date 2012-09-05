@@ -337,10 +337,10 @@ class View implements Responder, Appearance {
   // Controlls the viwwa and subviews
 
   function show() : void {
-    this.getElement().style.display = "none";
+    this.getElement().style.display = "defaulut";
   }
   function hide() : void {
-    this.getElement().style.display = "default";
+    this.getElement().style.display = "none";
   }
 
   function bringSubviewToFront(subview : View) : void {
